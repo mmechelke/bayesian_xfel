@@ -16,12 +16,14 @@ setup (name = 'bxfel', \
        version = '1.0', \
        packages  = ['bxfel',
                     'bxfel.core',
+                    'bxfel.io',
                     'bxfel.orientation',
                     'bxfel.sampling'
                 ],
        package_dir = {'bxfel': './bxfel'},
        package_data={'bxfel':['orientation/resources/gauss/*.dat',
-                              'orientation/resources/chebyshev/*.dat']},
+                              'orientation/resources/chebyshev/*.dat',
+                              'data/volumes/*.mrc']},
        include_package_data=True,
        requires = ['numpy', 'scipy'],
        zip_safe=False,
