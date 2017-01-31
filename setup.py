@@ -1,15 +1,20 @@
 from setuptools import setup, Extension
 import numpy
 
-setup (name = 'xfel', \
+setup (name = 'bxfel', \
        version = '1.0', \
-       packages  = ['xfel',
-                    'xfel.core',
-                    'xfel.orientaton',
-                    'xfel.sampling',
-                    'xfel.test',
+       packages  = ['bxfel',
+                    'bxfel.core',
+                    'bxfel.orientation',
+                    'bxfel.sampling',
+                    'bxfel.test',
                 ],
-       package_dir = {'xfel': './xfel'},
-       requires = ['numpy', 'scipy']
+       package_dir = {'bxfel': './bxfel'},
+       package_data={'bxfel':['orientation/resources/gauss/*.dat',
+                              'orientation/resources/chebyshev/*.dat']},
+       include_package_data=True,
+       requires = ['numpy', 'scipy'],
+       zip_safe=False
+       
 )
 
