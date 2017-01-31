@@ -4,12 +4,15 @@ import glob
 
 from abc import abstractmethod, abstractproperty
 
+import bxfel
 
 class AbstractSO3Quadrature(object):
 
     def __init__(self, order=1):
         self.n = order
-        self._path = os.path.expanduser("~/projects/xfel/data/integration")
+        mod_path = os.path.dirname(bxfel.__file__)
+        self._path = os.path.join(mod_path,
+                                  "orientation/resources")
         self._R = None
         self._w = None
 
@@ -26,7 +29,7 @@ class AbstractSO3Quadrature(object):
     @property
     def w(self):
         return self._w
-        
+
     @abstractmethod
     def get_support_rotations(self):
         """
@@ -46,7 +49,7 @@ class GaussSO3Quadrature(AbstractSO3Quadrature):
 
     def __init__(self, order=1):
         super(GaussSO3Quadrature,self).__init__(order)
-        
+
     def _read_file(self):
         n = self.n
         path = os.path.join(self._path, "gauss")
@@ -116,5 +119,3 @@ class ChebyshevSO3Quadrature(AbstractSO3Quadrature):
 if __name__ == "__main__":
     g = GaussSO3Quadrature(14)
     g = ChebyshevSO3Quadrature(6)
-            
-            
