@@ -1619,7 +1619,6 @@ static PyObject* py_set_rho(PyGridObject *self, PyObject *args) {
 
         elem = *((double *)PyArray_GETPTR3(rho, i, j, k));
         grid_index = ((i * self->ny + j) * self->nz) + k;
-        //printf("Multiarray: %i, %i, %i, Flat: %i,  %4.4f \n", i, j, k, grid_index, elem );
         self->values[grid_index] = elem; 
         
       }     
