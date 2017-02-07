@@ -511,15 +511,16 @@ class Grid(object):
         from scipy.ndimage import map_coordinates
         data = np.reshape(self.values, self.shape)
 
-        x_coords = self.axis(0)
-        y_coords = self.axis(1)
+        x_coords = self.axis(0) - self.origin[0]
+        y_coords = self.axis(1) - self.origin[1]
         xv, yv = np.meshgrid(x_coords, y_coords)
 
         slice_coords = np.array([[xx, yy, self.nz/2.]
                                  for xx,yy in zip(xv.ravel(), yv.ravel())])
+        slice_coords =  (slice_coords - self.origin)/ self.spacing
         slice_coords = np.dot(slice_coords, R)
-        grid_coords =  (slice_coords - self.origin)/ self.spacing
 
+        grid_coords =  slice_coords * self.spacing + self.origin
         values = map_coordinates(data,
                                  grid_coords.swapaxes(0,1),
                                  order=1, mode='nearest',

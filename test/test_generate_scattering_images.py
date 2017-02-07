@@ -5,7 +5,6 @@ import unittest
 import bxfel
 
 from bxfel.core.create_data import GaussianSlices, PoissonSlices
-
 from bxfel.io import mrc
 
 class TestPoissonSlices(unittest.TestCase):

@@ -2,7 +2,7 @@ import numpy as np
 
 from csbplus.statistics.rand import uniform_random_rotation
 
-from xfel.grid import Grid
+from bxfel.core.grid import Grid
 
 import scipy.ndimage
 
@@ -13,7 +13,8 @@ class Experiment(object):
 
         coords = np.linspace(-1.,1.,n)
         self._n = n
-        self._rho = Grid(coords ,coords,coords, density)
+        self._rho = Grid(n,n,n,density)
+        self._rho.origin = (n/2., n/2., n/2.)
 
     def generate_data(self, n_data):
         raise NotImplementedError("Subclass responsability")
