@@ -17,8 +17,9 @@ setup (name = 'bxfel', \
        packages  = ['bxfel',
                     'bxfel.core',
                     'bxfel.io',
+                    'bxfel.model',
                     'bxfel.orientation',
-                    'bxfel.sampling'
+                    'bxfel.inference'
                 ],
        package_dir = {'bxfel': './bxfel'},
        package_data={'bxfel':['orientation/resources/gauss/*.dat',
