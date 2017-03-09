@@ -1,7 +1,58 @@
+import os
+
+import numpy as np
+
+
 import numpy as np
 import scipy as sp
 
 from abc import ABCMeta, abstractmethod
+
+class DataSet(object):
+
+    def __init__(self, data = None, params=None):
+
+        if data is None:
+            self._data = []
+            self._params = []
+        elif params is None:
+            self._data = data
+            self._params = [{"orientation":np.eye(3)} for _ in range(len(data))]
+        else:
+            if len(data) != len(params):
+                raise ValueError("data and params differ in size")
+            self._data = data
+            self._params = params
+
+        if len(self._data) != len(self._params):
+            raise ValueError("data and params differ in size")
+
+    def __len__(self):
+        return len(self._data)
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            return DataSet(self._data[key], self._params[key])
+        elif isinstance(key, tuple):
+            return DataSet([self._data[i] for i in key],
+                           [self._params[i] for i in key])
+        elif isinstance(key, int):
+            return self._data[key], self._params[key]
+        else:
+            raise TypeError("Illegal index")
+
+    @property
+    def data(self):
+        return self._data
+
+    @property
+    def parameter(self):
+        return self._params
+
+    def __iter__(self):
+        for i in range(len(self._data)):
+            yield self._data[i], self._params[i]
+
 
 class Likelihood(object):
     __metaclass__ = ABCMeta
@@ -170,10 +221,6 @@ class PoissonLikelihood(Likelihood):
     Assumes Poisson distributed data
     """
 
-    def __init__(self, k=1., n=1, mask=None):
-        super(PoissonLikelihood, self).__init__(n, mask)
-        self._gamma = 1.
-
     def _energy(self, theta, data):
         eps = 1e-300
         energy = -data * np.log(np.clip(theta,1e-20, 1e300)) + data * np.log(np.clip(data,1e-20,1e300)) + theta
@@ -184,24 +231,6 @@ class PoissonLikelihood(Likelihood):
         # agressive clipping, maybe I am making the gradient problematic
         grad = 1 - data/np.clip(theta, 1e-10, 1e300)
         return energy.sum(), grad
-
-
-    def sample_nuissance_params(self, calc_data, data, parameter_dict):
-        if self._sample_gamma:
-            self.sample_scale(calc_data, data, parameter_dict)
-
-    def sample_scale(self, calc_data, data, parameter_dict):
-        # add a prior
-        prior = 1.
-        beta = np.sum(calc_data) +  prior
-        alpha =  np.sum(data) + 1. + prior
-        parameter_dict["gamma"] = gamma
-
-    def set_params(self, p):
-        super(GaussianLikelihood, self).set_params(p)
-        if "gamma" in p:
-            self._gamma = np.float(p['gamma'])
-
 
 class LogNormalLikelihood(Likelihood):
 
@@ -226,7 +255,6 @@ class LogNormalLikelihood(Likelihood):
                            1e-105, 1e300))
         chi = a - b
         return 0.5 * self._k * chi / a
-
 
 
 
@@ -301,3 +329,123 @@ class AnscombeLikelihood(Likelihood):
         energy = 0.5 * self._k * chi2 - 0.5 * n_data * np.log(self._k)
 
         return energy,  self._k * -diff
+
+
+
+class Prior(object):
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def energy(self, x):
+        raise NotImplementedError("Not implemented in Base class")
+
+    @abstractmethod
+    def gradient(self, x):
+        raise NotImplementedError("Not implemented in Base class")
+
+
+class ExponentialPrior(Prior):
+
+    def __init__(self, scale=1):
+        self._lambda = scale
+
+    def energy(self, x):
+        pass
+
+    def gradient(self, x):
+        pass
+
+class LaplacePrior(Prior):
+
+    def __init__(self, k=1.):
+        self._k = k
+
+    def energy(self, x):
+        return self._k * np.sum(np.abs(x))
+
+    def gradient(self, x):
+        return self._k * np.sign(x)
+
+class DoubleExpPrior(Prior):
+
+    """
+    Double exponential prior with two parameters
+    controlling the rate for positive and negative
+    values independently
+    """
+
+    def __init__(self, lambda_neg, lambda_pos):
+        self._lambda_neg = lambda_neg
+        self._lambda_pos = lambda_pos
+
+    def energy(self, x):
+        ln = self._lambda_neg
+        lp = self._lambda_pos
+        x_pos = x[x>0]
+        x_neg = x[x<0]
+
+        u_pos = -len(x_pos) * np.log(lp)  +  lp * np.sum(x_pos)
+        u_neg = -len(x_neg) * np.log(ln)  +  ln * np.sum(-x_neg)
+
+        return u_pos + u_neg
+
+    def gradient(self, x):
+        grad = np.zeros_like(x)
+        grad[x>0] = self._lambda_pos
+        grad[x<0] = -self._lambda_neg
+
+        return grad
+
+
+
+
+class LocalMeanPrior(Prior):
+
+    def __init__(self, k, N):
+        """
+        assumes that x is in fact
+        a N x N x N Tensor
+        """
+        self._k = k
+        self._N = int(N)
+
+
+    def energy(self, x):
+        tmp = x.reshape((self._N, self._N, self._N))
+        u = 0.0
+        for i in range(self._N):
+            for j in range(self._N):
+                for k in range(self._N):
+
+                    for l in [-1, 0, 1]:
+                        for m in [-1, 0, 1]:
+                            for n in [-1, 0, 1]:
+                                if l==0 and m==0 and n==0:
+                                    continue
+                                if (i+l >= 0 and i+l< self._N
+                                    and j+m >= 0 and j+m < self._N
+                                    and k+n >= 0 and k+n < self._N):
+                                    u += 0.5 * self._k * (tmp[i,j,k] - tmp[i+l,j+m,k+n])**2
+        return u
+
+    def gradient(self, x):
+        tmp = x.reshape((self._N, self._N, self._N))
+        grad = np.zeros_like(tmp)
+
+        u = 0.0
+        for i in range(self._N):
+            for j in range(self._N):
+                for k in range(self._N):
+
+                    for l in [-1, 0, 1]:
+                        for m in [-1, 0, 1]:
+                            for n in [-1, 0, 1]:
+                                if l==0 and m==0 and n==0:
+                                    continue
+                                if (i+l >= 0 and i+l< self._N
+                                    and j+m >= 0 and j+m < self._N
+                                    and k+n >= 0 and k+n < self._N):
+                                    grad[i,j,k] +=  self._k * (tmp[i,j,k] - tmp[i+l,j+m,k+n])
+                                    grad[i+l,j+m,k+n] -=  self._k * (tmp[i,j,k] - tmp[i+l,j+m,k+n])
+        return grad.ravel()
+
