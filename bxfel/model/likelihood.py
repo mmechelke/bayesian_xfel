@@ -123,7 +123,7 @@ class GaussianLikelihood(Likelihood):
             self.sample_force_constant(calc_data, data, parameter_dict)
         if self._sample_gamma:
             self.sample_scale(calc_data, data, parameter_dict)
-  
+
     def sample_scale(self, calc_data, data, parameter_dict):
         """
         Sample a new scale (fluence) gamma
@@ -195,13 +195,15 @@ class PoissonLikelihood(Likelihood):
         prior = 1.
         beta = np.sum(calc_data) +  prior
         alpha =  np.sum(data) + 1. + prior
-        parameter_dict["gamma"] = gamma
+        parameter_dict["gamma"] = np.random.gamma(alpha, 1./beta)
 
     def set_params(self, p):
         super(GaussianLikelihood, self).set_params(p)
         if "gamma" in p:
             self._gamma = np.float(p['gamma'])
 
+    def get_params(self):
+        return {"gamma": self._gamma}
 
 class LogNormalLikelihood(Likelihood):
 
