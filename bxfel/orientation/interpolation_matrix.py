@@ -32,6 +32,26 @@ def _get_coords(n_voxel, radial_cutoff=None, ndim=2):
 
     return coords
 
+def place_pixel_on_ewald_sphere(x, y, zL):
+    v =  np.array([x,y,zL]) - np.sqrt(1 + (x*x + y*y)/(zL*zL)) - np.array([0,0,zL])
+    return v
+
+
+def get_coords_on_eqald_sphere(n_voxel, radial_cutoff=None,
+                               detector_distance=1.,
+                               pixel_size=1.):
+    zL = detector_distance / pixel_size
+    zL_sq = zL*zL
+    yv, xv = np.meshgrid(np.arange(n_voxel) - (n_voxel)/2 + 1,
+                         np.arange(n_voxel) - (n_voxel)/2 + 1)
+
+    coords = np.array([np.array([xx,yy,zL]) - np.sqrt(1 + (xx*xx + yy*yy) / (zL_sq))
+                       for xx, yy in zip(xv.ravel(), yv.ravel())])
+    coords -=  np.array([0,0,zL])
+
+    return coords 
+
+
 def get_plane_coords(n_voxel, radial_cutoff=None):
     return _get_coords(n_voxel, radial_cutoff, ndim=2)
 
@@ -223,19 +243,31 @@ def compute_slice_interpolation_matrix(rotations, n_voxel, n_pixel=None,
 
 
 if __name__ == "__main__":
-    "TODO: cleanup this mess, move all the testing code somewhere safe"
-    "TODO: write proper unittests in the process"
 
-    from xfel.io import mrc
+    from bxfel.io import mrc
     import pylab as plt
     import seaborn as sns
-
+    from mpl_toolkits.mplot3d import Axes3D
     import os
 
-    from xfel.numeric.quadrature import ChebyshevSO3Quadrature
 
-    n_voxel = 25
+    n_voxel = 101
+    c = get_coords_on_eqald_sphere(n_voxel, radial_cutoff=None,
+                                   detector_distance=.13,
+                                   pixel_size=0.0014)
+    fig  = plt.figure(figsize=(16,9))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(c[:,0],c[:,1],c[:,2])
 
+    ax.set_zlim((-50,50))
+
+    cx = compute_interpolation_matrix(c, 101,101)
+    a = np.ones(cx.shape[0])
+    vol  = cx.T.dot(a)
+    vol = vol.reshape((n_voxel, n_voxel, n_voxel))
+    mrc.write(vol, os.path.expanduser("~/x.mrc"))
+
+    raise
     c = generate_coords(2,3,0.,1.)
     c = np.random.random(size = (2000,3)) * 16  - 8
 
