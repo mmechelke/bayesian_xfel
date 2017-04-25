@@ -90,6 +90,25 @@ class TestPoisson(AbstractFiniteDiffTest, unittest.TestCase):
         self._n = 1000
         self._eps = 1e-5
 
+
+    def test_sample_gamma(self):
+        n = self._n
+
+        self._ll._sample_gamma = True
+
+        params = {"gamma":1., "k":1.}
+        data = np.random.normal(1., scale=1., size=n)
+        self._ll.sample_nuissance_params(np.random.normal(data), data, params)
+        self.assertTrue(params["gamma"] != 1.)
+
+        gammas = []
+        for i in range(100):
+            self._ll.sample_nuissance_params(2 * (data), data, params)
+            gammas.append(params["gamma"])
+        self.assertTrue(np.abs(np.mean(gammas) -  0.5) < 0.1)
+
+
+
 class TestAnscombe(AbstractFiniteDiffTest, unittest.TestCase):
 
     def setUp(self):

@@ -26,7 +26,7 @@ class AbstractPosteriorTest(object):
 
         ground_truth = mrc.read(os.path.expanduser("~/projects/xfel/data/phantom/phantom.mrc"))[0]
         ground_truth = zoom(ground_truth, resolution/128.)
-
+        self._gt = ground_truth 
         q = ChebyshevSO3Quadrature(5)
 
         gs = GaussianSlices(ground_truth, scale = 1., sigma = 2.)
@@ -43,16 +43,18 @@ class AbstractPosteriorTest(object):
         ll = GaussianLikelihood(1.)
         return ll, proj, q, d_sparse
 
+
     def gen_model_and_masks(self):
         from scipy.ndimage import zoom
         rad = 0.95
         n_data = 100
-        self._ndata = n_data
+        self.n_data = n_data
         self._eps = 1e-6
         self._resolution = resolution = 5
 
         ground_truth = mrc.read(os.path.expanduser("~/projects/xfel/data/phantom/phantom.mrc"))[0]
         ground_truth = zoom(ground_truth, resolution/128.)
+        self._gt = ground_truth
 
         q = ChebyshevSO3Quadrature(5)
 
@@ -90,6 +92,17 @@ class AbstractPosteriorTest(object):
 
         np.testing.assert_array_almost_equal(grad, num_grad,1)
 
+    def test_call(self):
+        x = np.random.random(self._resolution**3)
+        energy = self._posterior.energy(x)
+        cl = self._posterior(x)
+        np.testing.assert_array_almost_equal(energy, cl)
+
+
+    def test_params(self):
+        self.assertEqual(len(self._posterior._params),
+                         self.n_data)
+
 
 class IntegratedOrientationPosteriorTest(AbstractPosteriorTest, unittest.TestCase):
 
@@ -97,11 +110,22 @@ class IntegratedOrientationPosteriorTest(AbstractPosteriorTest, unittest.TestCas
         ll, proj, q, d_sparse = self.gen_model()
         self._posterior = IntegratedOrientationPosterior(ll, proj, q, d_sparse)
 
-class FullPosteriorTest(AbstractPosteriorTest, unittest.TestCase):
+class FullPosteriorAndGaussTest(AbstractPosteriorTest, unittest.TestCase):
 
     def setUp(self):
         ll, proj, q, d_sparse = self.gen_model()
         self._posterior = FullPosterior(ll, proj, q, d_sparse)
+
+
+    def test_sample_nuissance(self):
+        x = self._gt * 2.
+        posterior = self._posterior
+        posterior._likelihood._sample_gamma = True
+
+        posterior.sample_nuissance_parameters(x)
+
+        for i in range(self.n_data):
+            self.assertGreater(posterior.params[i]['gamma'],1.)
 
 
 if __name__ == "__main__":
